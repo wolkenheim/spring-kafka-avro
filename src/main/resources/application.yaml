@@ -1,0 +1,6 @@
+spring:
+  config:
+    import:
+      - kafka.yaml
+topic:
+  product: "product-topic"

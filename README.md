@@ -28,4 +28,22 @@ Start the local cluster with
 cd _INFRA/dev/kafka && docker-compose up
 ```
 
+## 3. Write a avro producer
+We use autoconfigure magic to create a producer bean from application.yaml. You will need the maven package io.confluent.kafka-avro-serializer
+here as well. Start with the most basic avro setup. A simple REST controller endpoint that produces a test product every time GET http://localhost:8080/product
+is called.
+
+Now for the debugging. The schema should be registered automatically once product is produced. Either use the GUI tool http://localhost:8000/#/cluster/default/schema/product-topic-value/version/1
+Or just straight in the schema registry with `curl http://localhost:8081/subjects` to list all topics, get the versions of the schema `curl http://localhost:8081/subjects/product-topic-value/versions`
+and finally retrieve the schema with `curl http://localhost:8081/subjects/product-topic-value/versions/1`
+
+How to check if the message has been produced? Avro is binary data so the regular kafka-console-consumer will not be very useful here. Luckily
+Confluent shipped a kafka-avro-console-consumer tool with the schema-registry Docker image which I found extremely helpful.
+```
+docker exec schema-registry kafka-avro-console-consumer --bootstrap-server broker:9092 --topic product-topic --from-beginning
+```
+Success! You will find the test product here and see new ones arriving whenever you call the controller endpoint.
+
 ---
+
+https://www.confluent.io/blog/schema-registry-avro-in-spring-boot-application-tutorial/
