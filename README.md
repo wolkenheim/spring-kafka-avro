@@ -33,6 +33,8 @@ We use autoconfigure magic to create a producer bean from application.yaml. You 
 here as well. Start with the most basic avro setup. A simple REST controller endpoint that produces a test product every time GET http://localhost:8080/product
 is called.
 
+Inside the source code there is ridiculously little to do. The producer is just `KafkaTemplate<String, Product> kafkaTemplate;` with a send message. 
+
 Now for the debugging. The schema should be registered automatically once product is produced. Either use the GUI tool http://localhost:8000/#/cluster/default/schema/product-topic-value/version/1
 Or just straight in the schema registry with `curl http://localhost:8081/subjects` to list all topics, get the versions of the schema `curl http://localhost:8081/subjects/product-topic-value/versions`
 and finally retrieve the schema with `curl http://localhost:8081/subjects/product-topic-value/versions/1`
@@ -44,6 +46,15 @@ docker exec schema-registry kafka-avro-console-consumer --bootstrap-server broke
 ```
 Success! You will find the test product here and see new ones arriving whenever you call the controller endpoint.
 
+Now that we have a proof of concept it would be good to clean up a bit. The producer should be moved to its own class. And the Controller endpoint
+should be a POST method and receive product data. This should be easily done be just changing the method signature to
+`void publishProduct(@RequestBody Product product)`. In a real world scenario you would use an DTO object here, validate it and map it 
+to the specific Product object. For now this is sufficient, and we can use Postman to call the endpoint:
+```
+curl --location --request POST 'localhost:8080/product' \
+--header 'Content-Type: application/json' \
+--data-raw '{"id" : "12345", "name": "my shoe", "description": "goes here", "state": "ACTIVE", "crossSellingIds" : ["42332"]}'
+```
 ---
 
 https://www.confluent.io/blog/schema-registry-avro-in-spring-boot-application-tutorial/

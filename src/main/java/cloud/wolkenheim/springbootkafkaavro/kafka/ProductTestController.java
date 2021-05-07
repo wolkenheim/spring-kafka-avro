@@ -6,11 +6,12 @@ import org.apache.kafka.common.errors.SerializationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
 
+import javax.validation.Valid;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
@@ -31,10 +32,9 @@ public class ProductTestController {
 
     private final KafkaTemplate<String, Product> kafkaTemplate;
 
-    @GetMapping
-    void publishProduct(){
-
-        Product product = getTestProduct();
+    @PostMapping
+    @ResponseStatus(HttpStatus.OK)
+    void publishProduct(@RequestBody Product product){
 
         try {
             kafkaTemplate.send(
@@ -57,16 +57,5 @@ public class ProductTestController {
             String sStackTrace = sw.toString();
             log.error(sStackTrace);
         }
-    }
-
-    protected Product getTestProduct(){
-        return Product.newBuilder()
-                .setId("12345")
-                .setName("shoe 355")
-                .setDescription("Brand new Shoe")
-                .setState(ProductState.ACTIVE)
-                .setQty(9)
-                .setCrossSellingIds(new ArrayList<>(Arrays.asList("23456", "34566")))
-                .build();
     }
 }
