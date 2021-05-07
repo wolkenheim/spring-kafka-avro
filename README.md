@@ -91,7 +91,19 @@ public void consume(Product product, Acknowledgment ack){
 Now on the first restart all messages are getting consumed and acknowledged, after the second restart no more messages
 are consumed.
 
+## 5. Unit Test for the consumer
+Writing a test is simple. The consumer is just a method expecting a product object and an acknowledgement. The second one can be
+mocked via `Acknowledgment ack = mock(Acknowledgment.class);`. For the test product I introduced a factory helper.
+The test is pretty straight forward. You get the logging message. Now in a real application something is done with the consumed
+message. E.g. saved to a database via a service and repository. So the idea here would be spying on the arguments of the
+service and asserting that they are what we expect them to be. I will be honest here - this is quite redundant. Passing in object
+in and expecting the same object to be passed on. However, it is a test at least.
+
+
 ---
 
+## Helpful resources:
+
 https://docs.spring.io/spring-kafka/reference/html/#reference
+
 https://www.confluent.io/blog/schema-registry-avro-in-spring-boot-application-tutorial/
