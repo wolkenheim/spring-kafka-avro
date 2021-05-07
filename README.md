@@ -58,7 +58,7 @@ curl --location --request POST 'localhost:8080/product' \
 Now all the producer logic abides in its own @Service. Freshly produced products via Postman should be visible in the kafka-avro-console-consumer.
 
 ## 4. Add an avro consumer
-It is basically one annotation 
+Now we can add a consumer inside the Spring Boot application. This is basically one annotation:
 ```
 @KafkaListener(topics = "${topic.product}")
 public void consume(ConsumerRecord<String, Product> record) {
@@ -76,6 +76,22 @@ If you are only looking for the body aka value of the message but don´t mind me
 public void consume(Product product) {}
 ```
 
+
+In this setup the acknowledgements are sent automatically. Now in case you want to set those manually you need to set
+spring.kafka.listener.ack-mode=MANUAL_IMMEDIATE
+To check if it worked just produce a few messages and restart the application. The messages should be consumed every time
+the application restarts, hence the ack is now supposed to be set manually which is not implemented yet.
+
+Change the Listener to 
+```
+public void consume(Product product, Acknowledgment ack){
+        log.info("CONSUMED: " + product.getName());
+        ack.acknowledge();
+```
+Now on the first restart all messages are getting consumed and acknowledged, after the second restart no more messages
+are consumed.
+
 ---
 
+https://docs.spring.io/spring-kafka/reference/html/#reference
 https://www.confluent.io/blog/schema-registry-avro-in-spring-boot-application-tutorial/

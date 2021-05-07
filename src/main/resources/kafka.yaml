@@ -6,6 +6,8 @@ spring:
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: io.confluent.kafka.serializers.KafkaAvroSerializer
+    listener:
+      ack-mode: MANUAL_IMMEDIATE
     consumer:
       group-id: product-consumer-g1
       auto-offset-reset: earliest
