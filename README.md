@@ -99,6 +99,9 @@ message. E.g. saved to a database via a service and repository. So the idea here
 service and asserting that they are what we expect them to be. I will be honest here - this is quite redundant. Passing in object
 in and expecting the same object to be passed on. However, it is a test at least.
 
+## 6. Unit test for the producer
+A simple test mocks the KafkaTemplate, captures its argument and asserts that the producer has passed the Product to the KafkaTemplate.
+Nothing fancy is happening here.
 
 ---
 
