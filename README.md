@@ -58,11 +58,23 @@ curl --location --request POST 'localhost:8080/product' \
 Now all the producer logic abides in its own @Service. Freshly produced products via Postman should be visible in the kafka-avro-console-consumer.
 
 ## 4. Add an avro consumer
-It is basically one annotation `@KafkaListener(topics = "${topic.product}")`. There need to be autoconfiguration values added in kafka.yaml as well.
+It is basically one annotation 
+```
+@KafkaListener(topics = "${topic.product}")
+public void consume(ConsumerRecord<String, Product> record) {
+Product product = record.value();
+}
+```
+There need to be autoconfiguration values added in kafka.yaml as well.
 When starting up the application all records should be consumed automatically. The acknowledgement aka ack is sent so when starting up
 next time no records will be consumed, unless there are more products produced.
 If you run into the `nested exception is java.lang.ClassCastException: class org.apache.avro.generic.GenericData$Record cannot be cast to class`
-you forgot to set the property `spring.kafka.consumer.properties.specific.avro.reader=true`
+you forgot to set the property `spring.kafka.consumer.properties.specific.avro.reader=true`.
+If you are only looking for the body aka value of the message but don´t mind metadata and key, your listener can be reduced to 
+```
+@KafkaListener(topics = "${topic.product}")
+public void consume(Product product) {}
+```
 
 ---
 
