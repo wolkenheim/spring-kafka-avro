@@ -1,0 +1,62 @@
+{
+  "type": "record",
+  "name": "Product",
+  "namespace": "cloud.wolkenheim.springbootkafkaavro",
+  "fields": [
+    {
+      "name": "id",
+      "doc": "The ID of your product",
+      "type": "string"
+    },
+    {
+      "name": "state",
+      "doc": "Product Status",
+      "type": {
+        "type": "enum",
+        "name": "ProductState",
+        "symbols": [
+          "ACTIVE",
+          "INACTIVE"
+        ]
+      },
+      "default": "ACTIVE"
+    },
+    {
+      "name": "name",
+      "doc": "Name of the product",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "qty",
+      "doc": "Quantity of the product",
+      "type": [
+        "null",
+        "int"
+      ],
+      "default": null
+    },
+    {
+      "name": "description",
+      "doc": "Description of the product",
+      "type": [
+        "null",
+        "string"
+      ],
+      "default": null
+    },
+    {
+      "name": "crossSellingIds",
+      "doc": "List of related products",
+      "type": {
+        "type": "array",
+        "items": "string",
+        "pattern": "^[A-Z]{2}[0-9]{6,7}$"
+      },
+      "default": []
+    }
+  ]
+}
