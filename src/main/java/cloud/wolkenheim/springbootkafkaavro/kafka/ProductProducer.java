@@ -17,7 +17,7 @@ public class ProductProducer {
     @Value("${topic.product}")
     private String topic;
 
-    private static final Logger log = LoggerFactory.getLogger(ProductTestController.class);
+    private static final Logger log = LoggerFactory.getLogger(ProductController.class);
 
     private final KafkaTemplate<String, Product> kafkaTemplate;
 

@@ -19,11 +19,11 @@ import java.util.Arrays;
 
 @RestController
 @RequestMapping("product")
-public class ProductTestController {
+public class ProductController {
 
     protected final ProductProducer productProducer;
 
-    public ProductTestController(ProductProducer productProducer) {
+    public ProductController(ProductProducer productProducer) {
         this.productProducer = productProducer;
     }
 
