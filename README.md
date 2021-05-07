@@ -55,6 +55,8 @@ curl --location --request POST 'localhost:8080/product' \
 --header 'Content-Type: application/json' \
 --data-raw '{"id" : "12345", "name": "my shoe", "description": "goes here", "state": "ACTIVE", "crossSellingIds" : ["42332"]}'
 ```
+Now all the producer logic abides in its own @Service. Freshly produced products via Postman should be visible in the kafka-avro-console-consumer.
+
 ---
 
 https://www.confluent.io/blog/schema-registry-avro-in-spring-boot-application-tutorial/

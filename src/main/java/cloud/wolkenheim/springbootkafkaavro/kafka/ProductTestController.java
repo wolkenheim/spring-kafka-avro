@@ -21,41 +21,15 @@ import java.util.Arrays;
 @RequestMapping("product")
 public class ProductTestController {
 
-    private static final Logger log = LoggerFactory.getLogger(ProductTestController.class);
+    protected final ProductProducer productProducer;
 
-    @Value("${topic.product}")
-    private String topic;
-
-    public ProductTestController(KafkaTemplate<String, Product> kafkaTemplate) {
-        this.kafkaTemplate = kafkaTemplate;
+    public ProductTestController(ProductProducer productProducer) {
+        this.productProducer = productProducer;
     }
-
-    private final KafkaTemplate<String, Product> kafkaTemplate;
 
     @PostMapping
     @ResponseStatus(HttpStatus.OK)
     void publishProduct(@RequestBody Product product){
-
-        try {
-            kafkaTemplate.send(
-                    topic,
-                    product.getId().toString(),
-                    product
-            );
-        } catch (SerializationException e){
-            log.error("KAFKA Serialization ERROR:" + e.getMessage());
-            StringWriter sw = new StringWriter();
-            PrintWriter pw = new PrintWriter(sw);
-            e.printStackTrace(pw);
-            String sStackTrace = sw.toString();
-            log.error(sStackTrace);
-        } catch (Exception e){
-            log.error("KAFKA ERROR:" + e.getMessage());
-            StringWriter sw = new StringWriter();
-            PrintWriter pw = new PrintWriter(sw);
-            e.printStackTrace(pw);
-            String sStackTrace = sw.toString();
-            log.error(sStackTrace);
-        }
+        productProducer.send(product);
     }
 }
