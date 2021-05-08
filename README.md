@@ -69,7 +69,8 @@ There need to be autoconfiguration values added in kafka.yaml as well.
 When starting up the application all records should be consumed automatically. The acknowledgement aka ack is sent so when starting up
 next time no records will be consumed, unless there are more products produced.
 If you run into the `nested exception is java.lang.ClassCastException: class org.apache.avro.generic.GenericData$Record cannot be cast to class`
-you forgot to set the property `spring.kafka.consumer.properties.specific.avro.reader=true`.
+you forgot to set the property `spring.kafka.consumer.properties.specific.avro.reader=true`. This is hardly ever mentioned and can result in 
+hours of debugging your configuration.
 If you are only looking for the body aka value of the message but don´t mind metadata and key, your listener can be reduced to 
 ```
 @KafkaListener(topics = "${topic.product}")
@@ -103,6 +104,9 @@ in and expecting the same object to be passed on. However, it is a test at least
 A simple test mocks the KafkaTemplate, captures its argument and asserts that the producer has passed the Product to the KafkaTemplate.
 Nothing fancy is happening here.
 
+## 7. Integration Test with Embedded Kafka
+
+
 ---
 
 ## Helpful resources:
@@ -110,3 +114,6 @@ Nothing fancy is happening here.
 https://docs.spring.io/spring-kafka/reference/html/#reference
 
 https://www.confluent.io/blog/schema-registry-avro-in-spring-boot-application-tutorial/
+
+https://medium.com/@igorvlahek1/no-need-for-schema-registry-in-your-spring-kafka-tests-a5b81468a0e1 (Hint: Read the comments. The whole article is can be
+replaced by putting mock://localhost in your config for schema.registry.url)

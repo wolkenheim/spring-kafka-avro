@@ -26,6 +26,7 @@ public class ProductProducer {
     }
 
     public void send(Product product){
+        log.info("PRODUCING:" + product.getId().toString());
         try {
             kafkaTemplate.send(
                     topic,
