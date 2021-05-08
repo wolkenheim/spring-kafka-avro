@@ -33,7 +33,7 @@ import java.util.Map;
 @EmbeddedKafka(partitions = 1, topics = {"test-product-topic"}, brokerProperties = { "listeners=PLAINTEXT://localhost:9092", "port=9092" })
 @AutoConfigureMockMvc
 @EnableWebMvc
-@ActiveProfiles("`kafka-producer-test`")
+@ActiveProfiles("kafka-producer-test")
 @SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
 public class ProductControllerIntegrationTest {
 

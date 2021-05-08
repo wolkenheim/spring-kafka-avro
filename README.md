@@ -17,6 +17,13 @@ Let´s add some fields to the file resources/avro/product.avsc: string, integer,
 `mvn clean compile` will generate classes under target/generated-sources/avro...
 Let´s write a quick test to make sure the classes have been generated: test/java/cloud.wolkenheim.springbootkafkaavro.avro/ProductTest
 
+One important note: The default value of the Maven plugin for String is not String but CharSequence, the underlying 
+interface of String in Java. In case you would like to use String instead you can set the configuration stringType to String.
+As usual, there is a catch. During Serialization/ Deserialization of records Avro schemas are exchanged with the Schema Registry. 
+The plugin will add Java-specific annotations to the avro schema: `"avro.java.string": "String"`. In case you have  non-java
+consumers / producers in your network be careful with this option. You might end up generating new versions of your schema 
+or run into Serialization errors.
+
 ## 2. Add a Kafka cluster for local development
 A cluster consists of a zookeeper instance for the config files plus one to many brokers. As we just need a simple setup, one broker is sufficient.
 To work with Avro and Kafka the schema registry is used. This is an expansion by Confluent. You will find the basic workflow here:
