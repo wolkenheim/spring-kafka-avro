@@ -1,8 +1,6 @@
 package cloud.wolkenheim.springbootkafkaavro.kafka;
 
 import cloud.wolkenheim.springbootkafkaavro.Product;
-import cloud.wolkenheim.springbootkafkaavro.helper.ProductFactory;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.confluent.kafka.serializers.KafkaAvroDeserializerConfig;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -28,7 +26,6 @@ import org.springframework.test.web.servlet.result.MockMvcResultHandlers;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -36,9 +33,9 @@ import java.util.Map;
 @EmbeddedKafka(partitions = 1, topics = {"test-product-topic"}, brokerProperties = { "listeners=PLAINTEXT://localhost:9092", "port=9092" })
 @AutoConfigureMockMvc
 @EnableWebMvc
-@ActiveProfiles("test")
+@ActiveProfiles("`kafka-producer-test`")
 @SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
-public class ProductConsumerIntegrationTest {
+public class ProductControllerIntegrationTest {
 
     @Autowired
     MockMvc mockMvc;
@@ -59,7 +56,7 @@ public class ProductConsumerIntegrationTest {
     }
 
     @Test
-    void shouldConsume() throws Exception {
+    void shouldProduce() throws Exception {
         mockMvc.perform(
                 MockMvcRequestBuilders.post("/product")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -67,24 +64,22 @@ public class ProductConsumerIntegrationTest {
                         .content("{\"id\" : \"12345\", \"name\": \"my shoe\", \"description\": \"goes here\", \"state\": \"ACTIVE\", \"crossSellingIds\" : [\"42332\"]}")
 
         )
-                // assert
                 .andDo(MockMvcResultHandlers.print())
                 .andExpect(status().isOk());
 
         ConsumerRecord<String, Product> record = KafkaTestUtils.getSingleRecord(productConsumer, "test-product-topic", 500);
-
         assertEquals(record.value().getId().toString(), "12345");
     }
 
     protected void buildConsumer(){
-        //consumers used in test code needs to be created like this in code because otherwise it won't work
-        Map<String, Object> configs = new HashMap<>(KafkaTestUtils.consumerProps("in-test-consumer", "false", kafkaEmbedded));
+        // see: https://docs.spring.io/spring-kafka/reference/html/#junit
+        Map<String, Object> configs = new HashMap<>(KafkaTestUtils.consumerProps("in-test-consumer", "true", kafkaEmbedded));
+
+        // apache avro is not part of the KafkaTestUtils so the attributes need to be set manually
         configs.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, org.apache.kafka.common.serialization.StringDeserializer.class);
         configs.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, io.confluent.kafka.serializers.KafkaAvroDeserializer.class);
-        configs.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-        configs.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true);
-        configs.put("schema.registry.url", "mock://localhost:9081");
         configs.put(KafkaAvroDeserializerConfig.SPECIFIC_AVRO_READER_CONFIG, true);
+        configs.put("schema.registry.url", "mock://localhost");
 
         productConsumer = new DefaultKafkaConsumerFactory<String, Product>(configs).createConsumer("my-group-1", "10");
         productConsumer.subscribe(Lists.newArrayList("test-product-topic"));

@@ -3,7 +3,7 @@ spring:
     producer:
       properties:
         bootstrap.servers: localhost:9092
-        schema.registry.url: mock://localhost:9081
+        schema.registry.url: mock://localhost
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: io.confluent.kafka.serializers.KafkaAvroSerializer
       group-id: my-producer-group-1

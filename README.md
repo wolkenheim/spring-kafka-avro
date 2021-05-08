@@ -104,7 +104,81 @@ in and expecting the same object to be passed on. However, it is a test at least
 A simple test mocks the KafkaTemplate, captures its argument and asserts that the producer has passed the Product to the KafkaTemplate.
 Nothing fancy is happening here.
 
-## 7. Integration Test with Embedded Kafka
+## 7. Integration Test of the Kafka Producer with Embedded Kafka
+Now for the integration test with junit5. We would like to test posting a product payload to the controller. The payload 
+should get send to kafka. We will verify the result by consuming the topic and retrieving the Avro encoded message.
+
+The source code of the test can be found at src/test/java/cloud/wolkenheim/springbootkafkaavro/kafka/ProductControllerIntegrationTest
+
+### 7.1 Setting up the application context
+This is an integration test. We need to use the `@SpringBootTest` annotation There might be other dependencies (e.g. databases) 
+that are not present. It is sufficient to boot up only the classes we need here. That is the controller and producer in 
+the application and the `@EmbeddedKafka` as an in-memory mock of an external dependency. However, running the test with
+`@SpringBootTest(classes = {ProductController.class, ProductProducer.class })` will result in a NoSuchBeanDefinitionException. The
+test context cannot build an instance of KafkaTemplate. To solve this we need to add KafkaAutoConfiguration to the list
+of classes. There is no configuration file though. We should add one at resource/application-kafka-producer-test.yaml and load it with
+`@ActiveProfiles("kafka-producer-test")`. It has to include the configuration matching the embedded kafka.#
+
+### 7.1 Setting up the testing tools
+We can use MockMvc to test our RestController. The endpoint is returning status code 200 hence there is not much to 
+asserted or verified here. All we do is send our payload to the endpoint:
+```java
+        mockMvc.perform(
+        MockMvcRequestBuilders.post("/product")
+        .contentType(MediaType.APPLICATION_JSON)
+        .accept(MediaType.APPLICATION_JSON)
+        .content("{\"id\" : \"12345\", \"name\": \"my shoe\", \"description\": \"goes here\", \"state\": \"ACTIVE\", \"crossSellingIds\" : [\"42332\"]}")
+
+        )
+        .andExpect(status().isOk());
+```
+If you ever run into a 415 Status Code response, it can be fixed using the 
+`@EnableWebMvc` as suggest here: https://stackoverflow.com/questions/32838699/spring-mvc-testing-results-in-415-error
+
+### 7.2 Making the Schema Registry work
+With the @EmbeddedKafka annotation an in-memory kafka cluster can be instantiated for tests. There is a
+catch here: the schema registry is missing. Behind the scene io.confluent.kafka.serializers.KafkaAvroSerializer and 
+KafkaAvroDeSerializer
+are trying to make http calls to it. There is none, therefore the test will result in 
+`Caused by: org.apache.kafka.common.errors.SerializationException: Error deserializing Avro message for id 1`
+The obvious idea here is to write an own mock implementation of the Serializer/Deserializer. Someone did that already 
+and that solution works: https://medium.com/@igorvlahek1/no-need-for-schema-registry-in-your-spring-kafka-tests-a5b81468a0e1
+
+There is a much quicker way though as someone pointed out in the comments of said article. Just use "mock" instead of 
+"http" in your configs for the producer / consumer: `schema.registry.url: mock://localhost`
+No hassle with writing and maintaining mock implementations.
+
+### 7.3 Build a Kafka Consumer for Testing
+What we got so far: a JSON payload is sent to the controller endpoint which calls the Kafka producer and sends the message. 
+Let´s assume for a minute our application does not run a consumer. In a real-world scenario this is quite likely as the
+service itself knows its own data already. We should set up a consumer inside the test to mock it. Time to use the 
+`@EmbeddedKafka` annotation and autowire `EmbeddedKafkaBroker kafkaEmbedded;` inside the test class.
+
+```java
+    protected void buildConsumer(){
+        // see: https://docs.spring.io/spring-kafka/reference/html/#junit
+        Map<String, Object> configs = new HashMap<>(KafkaTestUtils.consumerProps("in-test-consumer", "true", kafkaEmbedded));
+
+        // apache avro is not part of the KafkaTestUtils so the attributes need to be set manually
+        configs.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, org.apache.kafka.common.serialization.StringDeserializer.class);
+        configs.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, io.confluent.kafka.serializers.KafkaAvroDeserializer.class);
+        configs.put(KafkaAvroDeserializerConfig.SPECIFIC_AVRO_READER_CONFIG, true);
+        configs.put("schema.registry.url", "mock://localhost");
+
+        productConsumer = new DefaultKafkaConsumerFactory<String, Product>(configs).createConsumer("my-group-1", "10");
+        productConsumer.subscribe(Lists.newArrayList("test-product-topic"));
+    }
+```
+
+Now retrieving the record is just a one-liner:
+```java
+ConsumerRecord<String, Product> record = KafkaTestUtils.getSingleRecord(productConsumer, "test-product-topic", 500);
+```
+Assertions can be written easily here simple as `assertEquals(record.value().getId().toString(), "12345");`
+
+There is an alternative approach though. Not wiring in your own consumer but working directly with a listener on the
+Kafka container. It has been described here: https://blog.mimacom.com/testing-apache-kafka-with-spring-boot-junit5/
+
 
 
 ---
@@ -114,6 +188,3 @@ Nothing fancy is happening here.
 https://docs.spring.io/spring-kafka/reference/html/#reference
 
 https://www.confluent.io/blog/schema-registry-avro-in-spring-boot-application-tutorial/
-
-https://medium.com/@igorvlahek1/no-need-for-schema-registry-in-your-spring-kafka-tests-a5b81468a0e1 (Hint: Read the comments. The whole article is can be
-replaced by putting mock://localhost in your config for schema.registry.url)
