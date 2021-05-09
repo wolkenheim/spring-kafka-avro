@@ -1,8 +1,8 @@
-# spring-kafka-avro
-Sample Setup for Spring boot with Apache Kafka and Avro
+# Spring Boot with Apache Kafka, Apache Avro and the Confluent Schema Registry
+Small sample project with a sample setup to make these components work together.
 
-Disclaimer: this is not a tutorial for beginners. The Apache Kafka ecosystem is vast and not easy to master. It helped me a lot to take the courses of Stephane Maarek on Udemy
-to understand how it worked. Sorry to bear the news: free tutorials are not enough.
+Disclaimer: this is not a tutorial aimed at beginners. The Apache Kafka ecosystem is vast and not easy to master. It helped me a lot to take the courses of Stephane Maarek on Udemy
+to gain a good understanding.
 
 Start with a simple Spring Boot Maven application from https://start.spring.io/ 
 
@@ -10,22 +10,22 @@ Start with a simple Spring Boot Maven application from https://start.spring.io/
 Now we are going to add some dependencies: Apache Avro. This is a JSON-like schema syntax to serialize and deserialize data. When we send our products
 via Kafka topics they will be encoded with Avro schemas.
 
-How does it work? We compile POJOs out of avro files. Let´s get started writing a domain object as a Avro file. This follows basically
+How does it work? Similar to Protocol Buffers. There will be POJOs compiled from the avro files. Now let´s started writing a domain object as a Avro file. This follows basically
 the idea you find at the official docs: https://avro.apache.org/docs/current/gettingstartedjava.html
-Let´s add some fields to the file resources/avro/product.avsc: string, integer, nullable union types, enum, lists.
+We can add some fields to the file resources/avro/product.avsc: string, integer, nullable union types, enum, lists.
 
-`mvn clean compile` will generate classes under target/generated-sources/avro...
+`mvn clean compile` will generate classes at target/generated-sources/avro...
 Let´s write a quick test to make sure the classes have been generated: test/java/cloud.wolkenheim.springbootkafkaavro.avro/ProductTest
 
-One important note: The default value of the Maven plugin for String is not String but CharSequence, the underlying 
-interface of String in Java. In case you would like to use String instead you can set the configuration stringType to String.
-As usual, there is a catch. During Serialization/ Deserialization of records Avro schemas are exchanged with the Schema Registry. 
-The plugin will add Java-specific annotations to the avro schema: `"avro.java.string": "String"`. In case you have also non-java
-consumers / producers in your network be careful with this option. 
+One important note: The default value of the avro-maven-plugin for String is not String but CharSequence, the underlying 
+interface of class String in Java. In case you would like to use String instead you can set the configuration stringType to String.
+As you might have guessed, there is a catch. During Serialization/ Deserialization of records Avro schemas are exchanged with the Schema Registry. 
+The plugin option will add Java-specific annotations to the avro schema: `"avro.java.string": "String"`. In case you have also non-java
+consumers / producers in your network be careful with this option. Read the discussion about this here: https://github.com/confluentinc/schema-registry/issues/868
 
 ## 2. Add a Kafka cluster for local development
-A cluster consists of a zookeeper instance for the config files plus one to many brokers. As we just need a simple setup, one broker is sufficient.
-To work with Avro and Kafka the schema registry is used. This is an expansion by Confluent. You will find the basic workflow here:
+A cluster consists of a Zookeeper instance for the config files plus one to many brokers. As we just need a simple setup, one broker is sufficient.
+To work with Avro and Kafka the schema registry is needed. This is an expansion of Kafka by Confluent. You will find the basic workflow here:
 https://docs.confluent.io/platform/current/schema-registry/index.html Also a quick note here that Confluent developed quite a few docker containers
 for Kafka that you could use here. Like the Schema Registry UI which I added and can be accessed at http://localhost:8000/#/
 
@@ -34,7 +34,7 @@ Start the local cluster with
 cd _INFRA/dev/kafka && docker-compose up
 ```
 
-## 3. Write a avro producer
+## 3. Write an Avro producer
 We use autoconfigure magic to create a producer bean from application.yaml. You will need the maven package io.confluent.kafka-avro-serializer
 here as well. Start with the most basic avro setup. A simple REST controller endpoint that produces a test product every time GET http://localhost:8080/product
 is called.
@@ -48,8 +48,9 @@ of the schema `curl http://localhost:8081/subjects/product-topic-value/versions`
 and finally retrieve the schema with `curl http://localhost:8081/subjects/product-topic-value/versions/1`
 The full list of all available REST endpoints can be found at: https://docs.confluent.io/platform/current/schema-registry/develop/api.html
 
-How to check if the message has been produced? Avro is binary data so the regular kafka-console-consumer will not be very useful here. Luckily
-Confluent shipped a kafka-avro-console-consumer tool with the schema-registry Docker image which I found extremely helpful.
+How to check if the message has been produced? Avro is binary data and therefore the regular kafka-console-consumer will not be very useful. 
+Luckily Confluent ships a kafka-avro-console-consumer cli tool with the schema-registry Docker image. It can be accessed
+like this
 ```
 docker exec schema-registry kafka-avro-console-consumer --bootstrap-server broker:9092 --topic product-topic --from-beginning
 ```
@@ -64,9 +65,9 @@ curl --location --request POST 'localhost:8080/product' \
 --header 'Content-Type: application/json' \
 --data-raw '{"id" : "12345", "name": "my shoe", "description": "goes here", "state": "ACTIVE", "crossSellingIds" : ["42332"]}'
 ```
-Now all the producer logic abides in its own @Service. Freshly produced products via Postman should be visible in the kafka-avro-console-consumer.
+Now all the producer logic abides in its own Service. Freshly produced products via Postman should be visible in the kafka-avro-console-consumer.
 
-## 4. Add an avro consumer
+## 4. Add an Avro consumer
 Now we can add a consumer inside the Spring Boot application. This is basically one annotation:
 ```
 @KafkaListener(topics = "${topic.product}")
@@ -86,7 +87,6 @@ If you are only looking for the body aka value of the message but don´t mind me
 public void consume(Product product) {}
 ```
 
-
 In this setup the acknowledgements are sent automatically. Now in case you want to set those manually you need to set
 spring.kafka.listener.ack-mode=MANUAL_IMMEDIATE
 To check if it worked just produce a few messages and restart the application. The messages should be consumed every time
@@ -102,16 +102,15 @@ Now on the first restart all messages are getting consumed and acknowledged, aft
 are consumed.
 
 ## 5. Unit Test for the consumer
-Writing a test is simple. The consumer is just a method expecting a product object and an acknowledgement. The second one can be
+Writing a unit test is easy. The consumer is just a method expecting a payload (and an acknowledgement). The second one can be
 mocked via `Acknowledgment ack = mock(Acknowledgment.class);`. For the test product I introduced a factory helper.
 The test is pretty straight forward. You get the logging message. Now in a real application something is done with the consumed
 message. E.g. saved to a database via a service and repository. So the idea here would be spying on the arguments of the
-service and asserting that they are what we expect them to be. I will be honest here - this is quite redundant. Passing in object
-in and expecting the same object to be passed on. However, it is a test at least.
+service and asserting that they are what we expect them to be.
 
 ## 6. Unit test for the producer
-A simple test mocks the KafkaTemplate, captures its argument and asserts that the producer has passed the Product to the KafkaTemplate.
-Nothing fancy is happening here.
+Again: a simple unit test without any Spring context. The KafkaTemplate instance is mocked, captures its argument and 
+asserts that the producer has passed the Product to the KafkaTemplate.
 
 ## 7. Integration Test of the Kafka Producer with Embedded Kafka
 Now for the integration test with junit5. We would like to test posting a product payload to the controller. The payload 
@@ -131,7 +130,7 @@ of classes. There is no configuration file though. We should add one at resource
 ### 7.1 Setting up the testing tools
 We can use MockMvc to test our RestController. The endpoint is returning status code 200 hence there is not much to 
 asserted or verified here. All we do is send our payload to the endpoint:
-```java
+```
         mockMvc.perform(
         MockMvcRequestBuilders.post("/product")
         .contentType(MediaType.APPLICATION_JSON)
@@ -142,20 +141,19 @@ asserted or verified here. All we do is send our payload to the endpoint:
         .andExpect(status().isOk());
 ```
 If you ever run into a 415 Status Code response, it can be fixed using the 
-`@EnableWebMvc` as suggest here: https://stackoverflow.com/questions/32838699/spring-mvc-testing-results-in-415-error
+`@EnableWebMvc` annotation as suggest here: https://stackoverflow.com/questions/32838699/spring-mvc-testing-results-in-415-error
 
 ### 7.2 Making the Schema Registry work
 With the @EmbeddedKafka annotation an in-memory kafka cluster can be instantiated for tests. There is a
 catch here: the schema registry is missing. Behind the scene io.confluent.kafka.serializers.KafkaAvroSerializer and 
-KafkaAvroDeSerializer
-are trying to make http calls to it. There is none, therefore the test will result in 
-`Caused by: org.apache.kafka.common.errors.SerializationException: Error deserializing Avro message for id 1`
-The obvious idea here is to write an own mock implementation of the Serializer/Deserializer. Someone did that already 
+KafkaAvroDeSerializer are trying to make http calls to it. There is none during testing, therefore the test will result in 
+`[...] Caused by: org.apache.kafka.common.errors.SerializationException: Error deserializing Avro message for id 1`
+The obvious idea here is to write an own mock implementation of the Serializer/ Deserializer. Someone did that already 
 and that solution works: https://medium.com/@igorvlahek1/no-need-for-schema-registry-in-your-spring-kafka-tests-a5b81468a0e1
 
-There is a much quicker way though as someone pointed out in the comments of said article. Just use "mock" instead of 
-"http" in your configs for the producer / consumer: `schema.registry.url: mock://localhost`
-No hassle with writing and maintaining mock implementations.
+There is a much quicker way though as another person pointed out in the comments of that article. Just use "mock" instead of 
+"http" in your configs for the producer / consumer: `schema.registry.url: mock://localhost`. This is a testing option
+integrated by Confluent. No hassle with writing and maintaining mock implementations.
 
 ### 7.3 Build a Kafka Consumer for Testing
 What we got so far: a JSON payload is sent to the controller endpoint which calls the Kafka producer and sends the message. 
@@ -183,7 +181,10 @@ Now retrieving the record is just a one-liner:
 ```java
 ConsumerRecord<String, Product> record = KafkaTestUtils.getSingleRecord(productConsumer, "test-product-topic", 500);
 ```
-Assertions can be written easily here simple as `assertEquals(record.value().getId().toString(), "12345");`
+Assertions can be written easily here simple as `assertEquals(record.value().getId().toString(), "12345");` Are there
+any more assertions to be made here? I would argue: not really. All I´m interested in as the fact that I can proof
+my record is sent and received. If I want to test correct mappings of attributes, I would do that inside the producer. 
+No Kafka needed for that. I expect the Serialization / Deserialization process to work correctly 
 
 There is an alternative approach though. Not wiring in your own consumer but working directly with a listener on the
 Kafka container. It has been described here: https://blog.mimacom.com/testing-apache-kafka-with-spring-boot-junit5/
