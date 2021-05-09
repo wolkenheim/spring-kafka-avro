@@ -20,9 +20,8 @@ Let´s write a quick test to make sure the classes have been generated: test/jav
 One important note: The default value of the Maven plugin for String is not String but CharSequence, the underlying 
 interface of String in Java. In case you would like to use String instead you can set the configuration stringType to String.
 As usual, there is a catch. During Serialization/ Deserialization of records Avro schemas are exchanged with the Schema Registry. 
-The plugin will add Java-specific annotations to the avro schema: `"avro.java.string": "String"`. In case you have  non-java
-consumers / producers in your network be careful with this option. You might end up generating new versions of your schema 
-or run into Serialization errors.
+The plugin will add Java-specific annotations to the avro schema: `"avro.java.string": "String"`. In case you have also non-java
+consumers / producers in your network be careful with this option. 
 
 ## 2. Add a Kafka cluster for local development
 A cluster consists of a zookeeper instance for the config files plus one to many brokers. As we just need a simple setup, one broker is sufficient.
@@ -42,9 +41,12 @@ is called.
 
 Inside the source code there is ridiculously little to do. The producer is just `KafkaTemplate<String, Product> kafkaTemplate;` with a send message. 
 
-Now for the debugging. The schema should be registered automatically once product is produced. Either use the GUI tool http://localhost:8000/#/cluster/default/schema/product-topic-value/version/1
-Or just straight in the schema registry with `curl http://localhost:8081/subjects` to list all topics, get the versions of the schema `curl http://localhost:8081/subjects/product-topic-value/versions`
+Now for the debugging. The schema should be registered automatically once product is produced. Either use the GUI tool 
+http://localhost:8000/#/cluster/default/schema/product-topic-value/version/1
+Or just straight in the schema registry with `curl http://localhost:8081/subjects` to list all topics, get the versions 
+of the schema `curl http://localhost:8081/subjects/product-topic-value/versions`
 and finally retrieve the schema with `curl http://localhost:8081/subjects/product-topic-value/versions/1`
+The full list of all available REST endpoints can be found at: https://docs.confluent.io/platform/current/schema-registry/develop/api.html
 
 How to check if the message has been produced? Avro is binary data so the regular kafka-console-consumer will not be very useful here. Luckily
 Confluent shipped a kafka-avro-console-consumer tool with the schema-registry Docker image which I found extremely helpful.
