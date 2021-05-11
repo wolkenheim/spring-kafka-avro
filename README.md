@@ -21,10 +21,12 @@ One important note: The default value of the avro-maven-plugin for String is not
 interface of class String in Java. In case you would like to use String instead you can set the configuration stringType to String.
 As you might have guessed, there is a catch. During Serialization/ Deserialization of records Avro schemas are exchanged with the Schema Registry. 
 The plugin option will add Java-specific annotations to the avro schema: `"avro.java.string": "String"`. In case you have also non-java
-consumers / producers in your network be careful with this option. Read the discussion about this here: https://github.com/confluentinc/schema-registry/issues/868
+consumers / producers in your network be careful with this option. This is especially the case if your organization 
+publishes its schemas via a Git repository and a CI pipeline to the Schema Registry.
+Read the discussion about this here: https://github.com/confluentinc/schema-registry/issues/868
 
 ## 2. Add a Kafka cluster for local development
-A cluster consists of a Zookeeper instance for the config files plus one to many brokers. As we just need a simple setup, one broker is sufficient.
+A cluster consists of a Zookeeper instance plus one to many brokers. As we just need a simple setup, one broker is sufficient.
 To work with Avro and Kafka the schema registry is needed. This is an expansion of Kafka by Confluent. You will find the basic workflow here:
 https://docs.confluent.io/platform/current/schema-registry/index.html Also a quick note here that Confluent developed quite a few docker containers
 for Kafka that you could use here. Like the Schema Registry UI which I added and can be accessed at http://localhost:8000/#/
@@ -177,6 +179,9 @@ service itself knows its own data already. We should set up a consumer inside th
     }
 ```
 
+There is an alternative approach though. Not wiring in your own consumer but working directly with a listener on the
+Kafka container. It is described here: https://blog.mimacom.com/testing-apache-kafka-with-spring-boot-junit5/
+
 Now retrieving the record is just a one-liner:
 ```java
 ConsumerRecord<String, Product> record = KafkaTestUtils.getSingleRecord(productConsumer, "test-product-topic", 500);
@@ -184,16 +189,41 @@ ConsumerRecord<String, Product> record = KafkaTestUtils.getSingleRecord(productC
 Assertions can be written easily here simple as `assertEquals(record.value().getId().toString(), "12345");` Are there
 any more assertions to be made here? I would argue: not really. All I´m interested in as the fact that I can proof
 my record is sent and received. If I want to test correct mappings of attributes, I would do that inside the producer. 
-No Kafka needed for that. I expect the Serialization / Deserialization process to work correctly 
+No Kafka needed for that. I expect the Serialization / Deserialization process to work correctly.
 
-There is an alternative approach though. Not wiring in your own consumer but working directly with a listener on the
-Kafka container. It has been described here: https://blog.mimacom.com/testing-apache-kafka-with-spring-boot-junit5/
+## 8. Integration Test of the Kafka Consumer with Embedded Kafka
+Build a test producer, publish a test product. Then start the Spring Application Context with the consumer and get the 
+message. There is another catch here: we run into race conditions. Spring Context has no way to know that it should run
+until a message is produced in the test context, can be consumed, and has been consumed. An easy but brute way to fix 
+this is adding a timeout to the test. 
 
+## 8. Evaluation of the testing strategy
+We could spin this further and take it to the next step from here: how about Testcontainers instead of the embedded Kafka 
+cluster. However, it begs the question: does this whole testing concept make sense? I would argue: up to Unit tests yes
+it does. Further on: no, it does not. To make it crystal clear: when it comes to producing everything inside 
+KafkaTemplate.send() should be none of our business. This is the realm of Kafka and its java libraries.
+We´re not testing our own source code, but the source code of someone else and most of all configuration. The presented 
+configuration with its implicit assumptions in the integration test scenario is both oversimplifying and too complex. 
+It is too complex as we simply need to know a payload is passed to a method. Or in the case of a consumer: a 
+certain payload is received. It is oversimplifying as this is not a real Kafka setup. There are more configuration 
+options involved. 
 
+To give you an idea what kind of bugs I have encountered in a real-world deployments: wrong named or missing variables 
+in CI pipeline. Secrets not set correctly in Kubernetes. Basic Auth Credentials for Schema Registry not working. Wrong 
+Keystore for SSL Certificates. The list goes on. The integration tests presented here would not have prevented those 
+bugs. Again: all knowledge that is gained by those tests here is that Object goes in, Object comes out. This is
+different to testing a database integration, no matter if relational or non-relational. Here I would like to know if
+queries are delivering correct results. When testing JPA repositories pure unit tests without an embedded database 
+are not very useful.
+
+However, I would argue that those tests are very useful base to build up for more complex setups: when using
+Kafka Streams and Ksql. Here you have definitely the use case for mocked test data in kafka.
+
+To sum this up: for my current use case of Kafka unit test are sufficient. If 
 
 ---
 
-## Helpful resources:
+## Other helpful resources:
 
 https://docs.spring.io/spring-kafka/reference/html/#reference
 

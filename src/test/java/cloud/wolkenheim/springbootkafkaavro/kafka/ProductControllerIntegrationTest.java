@@ -2,6 +2,7 @@ package cloud.wolkenheim.springbootkafkaavro.kafka;
 
 import cloud.wolkenheim.springbootkafkaavro.Product;
 import io.confluent.kafka.serializers.KafkaAvroDeserializerConfig;
+import jdk.jfr.Category;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -19,6 +20,7 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.kafka.test.utils.KafkaTestUtils;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
@@ -34,6 +36,7 @@ import java.util.Map;
 @AutoConfigureMockMvc
 @EnableWebMvc
 @ActiveProfiles("kafka-producer-test")
+@DirtiesContext
 @SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
 public class ProductControllerIntegrationTest {
 
@@ -53,6 +56,7 @@ public class ProductControllerIntegrationTest {
     @AfterEach
     void tearDown(){
         productConsumer.close();
+        kafkaEmbedded.destroy();
     }
 
     @Test
